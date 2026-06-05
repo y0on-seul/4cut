@@ -1,0 +1,502 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTRL + SMILE</title>
+    <!-- Google Fonts: Modern & Clean -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;700&display=swap" rel="stylesheet">
+    <!-- html2canvas: DOM을 이미지로 변환하기 위한 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --accent-color: #ffffff;
+            --frame-color: #ffffff;
+            --text-color: #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--accent-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 5vh 20px;
+            overflow-x: hidden;
+        }
+
+        header {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 300;
+            letter-spacing: 0.8em;
+            text-transform: uppercase;
+            text-indent: 0.8em;
+        }
+
+        main {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Camera Section */
+        .camera-wrapper {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            background: #111;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 30px rgba(255,255,255,0.05);
+        }
+
+        #webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* 거울 모드 */
+        }
+
+        .countdown {
+            position: absolute;
+            font-size: 7rem;
+            font-weight: 700;
+            display: none;
+            z-index: 10;
+            text-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .flash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        @keyframes flash-anim {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Shutter Control */
+        .controls {
+            margin-top: 40px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .shutter {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid white;
+            background: transparent;
+            padding: 6px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .shutter:active { transform: scale(0.92); }
+
+        .shutter-inner {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 50%;
+        }
+
+        /* Result View */
+        #result-view {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 4-Cut Frame (Hidden from view, used for capture) */
+        #capture-area {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+        }
+
+        .frame-container {
+            width: 1200px; /* 고해상도 인화를 위한 기본 너비 설정 */
+            background-color: var(--frame-color);
+            padding: 60px 60px 140px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            color: var(--text-color);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .photo-box {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            background: #eee;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .sticker {
+            position: absolute;
+            width: 35%;
+            pointer-events: none;
+        }
+
+        .sticker-tl { top: -5%; left: -5%; transform: rotate(-15deg); }
+        .sticker-br { bottom: -5%; right: -5%; transform: rotate(15deg); }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-size: 2.8rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+        }
+
+        .footer-date {
+            font-size: 1.8rem;
+            margin-top: 15px;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        /* Rendered Image Display */
+        #final-image {
+            width: 100%;
+            max-width: 340px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        .guide-text {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        /* Customization UI */
+        .custom-ui {
+            width: 100%;
+            background: #111;
+            padding: 25px;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #555;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .colors {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .color-dot {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        .color-dot:hover { transform: scale(1.1); }
+        .color-dot.active { border-color: #007aff; }
+
+        .upload-wrapper {
+            position: relative;
+        }
+
+        .upload-btn {
+            display: block;
+            background: #222;
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border: 1px dashed #444;
+            transition: background 0.2s;
+        }
+        .upload-btn:hover { background: #2a2a2a; }
+
+        .reset-btn {
+            margin-top: 30px;
+            padding: 15px 30px;
+            background: none;
+            border: 1px solid #333;
+            color: #888;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        .reset-btn:hover { background: #fff; color: #000; border-color: #fff; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>CTRL + SMILE</h1>
+</header>
+
+<main>
+    <!-- 1. 촬영 단계 -->
+    <div id="camera-view" style="width:100%; display: flex; flex-direction: column; align-items: center;">
+        <div class="camera-wrapper">
+            <video id="webcam" autoplay playsinline></video>
+            <div id="countdown" class="countdown">3</div>
+            <div id="flash" class="flash"></div>
+        </div>
+        <div class="controls">
+            <button class="shutter" id="startBtn">
+                <div class="shutter-inner"></div>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 결과 확인 및 편집 단계 -->
+    <div id="result-view">
+        <div id="capture-area">
+            <div class="frame-container" id="main-frame">
+                <div class="grid">
+                    <div class="photo-box" id="slot-0"></div>
+                    <div class="photo-box" id="slot-1"></div>
+                    <div class="photo-box" id="slot-2"></div>
+                    <div class="photo-box" id="slot-3"></div>
+                </div>
+                <div class="footer">
+                    <div class="footer-logo">CTRL + SMILE</div>
+                    <div class="footer-date" id="current-date"></div>
+                </div>
+            </div>
+        </div>
+
+        <img id="final-image" alt="결과물 이미지">
+        <p class="guide-text">사진을 길게 눌러 저장하세요</p>
+
+        <div class="custom-ui">
+            <div>
+                <span class="section-label">Frame Color</span>
+                <div class="colors">
+                    <div class="color-dot active" style="background:#fff" onclick="setFrame('#ffffff','#000',this)"></div>
+                    <div class="color-dot" style="background:#000; border:1px solid #333" onclick="setFrame('#000','#fff',this)"></div>
+                    <div class="color-dot" style="background:#ffc0cb" onclick="setFrame('#ffc0cb','#000',this)"></div>
+                    <div class="color-dot" style="background:#a0e9ff" onclick="setFrame('#a0e9ff','#000',this)"></div>
+                    <div class="color-dot" style="background:#e0c3fc" onclick="setFrame('#e0c3fc','#000',this)"></div>
+                </div>
+            </div>
+            
+            <div>
+                <span class="section-label">Sticker Upload</span>
+                <label class="upload-btn">
+                    이미지 업로드 (PNG 권장)
+                    <input type="file" id="stickerInput" hidden accept="image/*">
+                </label>
+            </div>
+        </div>
+
+        <button class="reset-btn" onclick="location.reload()">다시 촬영하기</button>
+    </div>
+</main>
+
+<script>
+    const video = document.getElementById('webcam');
+    const startBtn = document.getElementById('startBtn');
+    const countdownEl = document.getElementById('countdown');
+    const flashEl = document.getElementById('flash');
+    const cameraView = document.getElementById('camera-view');
+    const resultView = document.getElementById('result-view');
+    const stickerInput = document.getElementById('stickerInput');
+    const frame = document.getElementById('main-frame');
+    
+    let photos = [];
+    let stickerSrc = null;
+
+    // 카메라 초기화
+    async function initCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { aspectRatio: 3/4, facingMode: "user" }, 
+                audio: false 
+            });
+            video.srcObject = stream;
+        } catch (err) {
+            alert("카메라를 사용할 수 없습니다. 권한 설정을 확인해주세요.");
+        }
+    }
+
+    // 촬영 시작
+    startBtn.onclick = async () => {
+        startBtn.style.visibility = 'hidden';
+        photos = [];
+        
+        for (let i = 0; i < 4; i++) {
+            await runCountdown(3);
+            takePhoto(i);
+            triggerFlash();
+            await new Promise(r => setTimeout(r, 600));
+        }
+        
+        showResults();
+    };
+
+    function runCountdown(sec) {
+        return new Promise(resolve => {
+            let count = sec;
+            countdownEl.style.display = 'block';
+            countdownEl.innerText = count;
+            let timer = setInterval(() => {
+                count--;
+                if (count <= 0) {
+                    clearInterval(timer);
+                    countdownEl.style.display = 'none';
+                    resolve();
+                } else {
+                    countdownEl.innerText = count;
+                }
+            }, 1000);
+        });
+    }
+
+    function takePhoto(index) {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        // 좌우 반전 적용
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0);
+        const data = canvas.toDataURL('image/jpeg');
+        photos.push(data);
+        document.getElementById(`slot-${index}`).innerHTML = `<img src="${data}">`;
+    }
+
+    function triggerFlash() {
+        flashEl.style.animation = 'none';
+        flashEl.offsetHeight; /* reflow */
+        flashEl.style.animation = 'flash-anim 0.4s ease-out';
+    }
+
+    function showResults() {
+        cameraView.style.display = 'none';
+        resultView.style.display = 'flex';
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString('ko-KR', {
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        }).replace(/\. /g, '.').replace(/\.$/, '');
+        
+        renderToImage();
+    }
+
+    function setFrame(bg, txt, el) {
+        frame.style.backgroundColor = bg;
+        frame.style.color = txt;
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        el.classList.add('active');
+        renderToImage();
+    }
+
+    stickerInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            stickerSrc = event.target.result;
+            applyStickers();
+            renderToImage();
+        };
+        reader.readAsDataURL(file);
+    };
+
+    function applyStickers() {
+        const slots = [document.getElementById('slot-0'), document.getElementById('slot-3')];
+        slots.forEach((slot, i) => {
+            slot.querySelectorAll('.sticker').forEach(s => s.remove());
+            const img = document.createElement('img');
+            img.src = stickerSrc;
+            img.className = i === 0 ? 'sticker sticker-tl' : 'sticker sticker-br';
+            slot.appendChild(img);
+        });
+    }
+
+    // 최종 결과물을 이미지 태그로 렌더링 (저장용)
+    function renderToImage() {
+        const captureArea = document.getElementById('capture-area');
+        const finalImg = document.getElementById('final-image');
+        
+        html2canvas(captureArea, {
+            scale: 1, // 이미 고해상도(1200px)로 설정되어 있으므로 scale 1 사용
+            backgroundColor: null,
+            logging: false,
+            useCORS: true
+        }).then(canvas => {
+            finalImg.src = canvas.toDataURL('image/png');
+        });
+    }
+
+    initCamera();
+</script>
+</body>
+</html>
